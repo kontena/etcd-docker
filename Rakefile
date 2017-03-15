@@ -9,8 +9,12 @@ if arch == 'amd64'
   baseimage = 'alpine'
 elsif arch == 'arm64'
   baseimage = 'aarch64/alpine'
+  goarch = 'arm64'
+elsif arch == 'armhf'
+  goarch = 'arm'
+  baseimage = 'armhf/alpine'
 else
-  exit "arch not supported: #{arch}"
+  abort "arch not supported: #{arch}"
 end
 
 task :build do
@@ -25,16 +29,16 @@ task :build do
         sh "cp #{etcd_tmp_dir}/etcd #{etcd_tmp_dir}/etcdctl #{tmpdir}/"
       }
     else
-      Dir.mktmpdir { |etcd_tmp_dir|
+      Dir.chdir(File.join(Dir.pwd, 'build')) { |etcd_tmp_dir|
         cmd = [
-          '/bin/bash -c',
+          "/bin/bash -c '",
           "git clone https://github.com/coreos/etcd /go/src/github.com/coreos/etcd",
           "&& cd /go/src/github.com/coreos/etcd",
           "&& git checkout v#{version}",
-          "&& GOARM=#{goarm} GOARCH=#{arch} ./build",
-          "&& cp -f bin/#{arch}/etcd* bin/etcd* /etcdbin; echo 'done'"
+          "&& GOARM=#{goarm} GOARCH=#{goarch} ./build",
+          "&& cp -f bin/etcd* bin/etcd* /etcdbin'"
         ]
-        sh "docker run -it -v #{etcd_tmp_dir}:/etcdbin golang:#{golang_version}"
+        sh "docker run -it -v #{etcd_tmp_dir}:/etcdbin golang:#{golang_version} #{cmd.join(' ')}"
         sh "cp #{etcd_tmp_dir}/etcd #{etcd_tmp_dir}/etcdctl #{tmpdir}/"
       }
     end
